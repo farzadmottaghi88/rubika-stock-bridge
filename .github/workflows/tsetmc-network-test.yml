@@ -1,0 +1,79 @@
+name: TSETMC Network Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Network diagnostics
+        shell: bash
+        run: |
+          set +e
+
+          echo "========================================"
+          echo "TSETMC NETWORK DIAGNOSTICS"
+          echo "========================================"
+
+          echo ""
+          echo "===== DNS TEST ====="
+
+          echo "--- tsetmc.com ---"
+          getent hosts tsetmc.com
+
+          echo "--- www.tsetmc.com ---"
+          getent hosts www.tsetmc.com
+
+          echo "--- cdn.tsetmc.com ---"
+          getent hosts cdn.tsetmc.com
+
+          echo "--- cdn10.tsetmc.com ---"
+          getent hosts cdn10.tsetmc.com
+
+          echo ""
+          echo "===== HTTPS TEST ====="
+
+          test_url() {
+            NAME="$1"
+            URL="$2"
+
+            echo ""
+            echo "----- $NAME -----"
+            echo "URL: $URL"
+
+            curl \
+              --location \
+              --silent \
+              --show-error \
+              --max-time 15 \
+              --connect-timeout 8 \
+              -A "Mozilla/5.0" \
+              -w "\nHTTP_STATUS:%{http_code}\nCONTENT_TYPE:%{content_type}\nSIZE:%{size_download}\nREMOTE_IP:%{remote_ip}\n" \
+              "$URL"
+
+            echo ""
+          }
+
+          test_url \
+            "TSETMC ROOT" \
+            "https://www.tsetmc.com/"
+
+          test_url \
+            "TSETMC ROOT WITHOUT WWW" \
+            "https://tsetmc.com/"
+
+          test_url \
+            "TSETMC CDN MARKETWATCH" \
+            "https://cdn.tsetmc.com/api/ClosingPrice/GetMarketWatch?market=0"
+
+          test_url \
+            "TSETMC CDN10 MARKETWATCH" \
+            "https://cdn10.tsetmc.com/api/ClosingPrice/GetMarketWatch?market=0"
+
+          echo ""
+          echo "========================================"
+          echo "TEST FINISHED"
+          echo "========================================"
