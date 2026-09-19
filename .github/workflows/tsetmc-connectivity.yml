@@ -1,0 +1,65 @@
+name: TSETMC Connectivity Probe
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe-tsetmc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - name: Probe TSETMC endpoints
+        shell: bash
+        run: |
+          set +e
+
+          echo "========================================"
+          echo "TSETMC CONNECTIVITY PROBE"
+          echo "Runner: $(uname -a)"
+          echo "Time: $(date -u)"
+          echo "========================================"
+
+          test_url() {
+            NAME="$1"
+            URL="$2"
+
+            echo ""
+            echo "----- $NAME -----"
+            echo "URL: $URL"
+
+            START=$(date +%s%3N)
+
+            RESPONSE=$(curl \
+              --location \
+              --silent \
+              --show-error \
+              --max-time 15 \
+              --connect-timeout 8 \
+              -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/138 Safari/537.36" \
+              -w "\nHTTP_STATUS:%{http_code}\nCONTENT_TYPE:%{content_type}\nSIZE:%{size_download}\n" \
+              "$URL" 2>&1)
+
+            END=$(date +%s%3N)
+            ELAPSED=$((END - START))
+
+            echo "$RESPONSE"
+            echo "ELAPSED_MS: $ELAPSED"
+          }
+
+          test_url \
+            "TSETMC CDN MarketWatch" \
+            "https://cdn.tsetmc.com/api/ClosingPrice/GetMarketWatch?market=0"
+
+          test_url \
+            "TSETMC CDN10 MarketWatch" \
+            "https://cdn10.tsetmc.com/api/ClosingPrice/GetMarketWatch?market=0"
+
+          test_url \
+            "TSETMC Legacy MarketWatch" \
+            "http://old.tsetmc.com/tsev2/excel/MarketWatchPlus.aspx?d=0"
+
+          echo ""
+          echo "========================================"
+          echo "PROBE FINISHED"
+          echo "========================================"
