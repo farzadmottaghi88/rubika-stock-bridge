@@ -1,80 +1,32 @@
-name: TSETMC API String Extraction
+name: TSETMC JS Range Test
 
 on:
   workflow_dispatch:
 
 jobs:
-  extract:
+  test-range:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
 
     steps:
-      - name: Download TSETMC JavaScript
-        shell: bash
+      - name: Test HTTP Range
         run: |
-          set -e
-
           URL="https://www.tsetmc.com/main.f24603b0cc21e2598771.js"
 
-          curl \
-            --location \
-            --silent \
-            --show-error \
-            --max-time 30 \
-            --connect-timeout 10 \
+          echo "=== Testing HTTP Range ==="
+
+          curl -L \
             -A "Mozilla/5.0" \
-            "$URL" \
-            -o tsetmc-main.js
-
-          echo "Downloaded:"
-          wc -c tsetmc-main.js
-
-      - name: Extract API related strings
-        shell: bash
-        run: |
-          set +e
-
-          echo "========================================"
-          echo "TSETMC API STRING EXTRACTION"
-          echo "========================================"
-
-          python3 <<'PY'
-          import re
-
-          path = "tsetmc-main.js"
-
-          with open(path, "rb") as f:
-              data = f.read()
-
-          text = data.decode("utf-8", errors="ignore")
-
-          patterns = [
-              r'https?://[^"\'\s]+',
-              r'/api/[^"\'\s]+',
-              r'api/[^"\'\s]+',
-              r'cdn[^"\'\s]+',
-              r'MarketWatch[^"\'\s]*',
-              r'ClosingPrice[^"\'\s]*',
-              r'ClientType[^"\'\s]*',
-              r'Order[^"\'\s]*',
-          ]
-
-          found = set()
-
-          for pattern in patterns:
-              for match in re.findall(pattern, text, flags=re.I):
-                  if len(match) < 300:
-                      found.add(match)
-
-          print("")
-          print("TOTAL UNIQUE MATCHES:", len(found))
-          print("")
-
-          for item in sorted(found):
-              print(item)
-          PY
+            --range 0-262143 \
+            --max-time 20 \
+            --connect-timeout 10 \
+            -D headers.txt \
+            -o range-test.bin \
+            "$URL"
 
           echo ""
-          echo "========================================"
-          echo "EXTRACTION FINISHED"
-          echo "========================================"
+          echo "=== HEADERS ==="
+          cat headers.txt
+
+          echo ""
+          echo "=== DOWNLOADED SIZE ==="
+          wc -c range-test.bin
