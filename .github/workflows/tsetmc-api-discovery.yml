@@ -1,0 +1,69 @@
+name: TSETMC API Discovery
+
+on:
+  workflow_dispatch:
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Discover TSETMC API
+        shell: bash
+        run: |
+          set +e
+
+          echo "========================================"
+          echo "TSETMC API DISCOVERY"
+          echo "========================================"
+
+          test_url() {
+            NAME="$1"
+            URL="$2"
+
+            echo ""
+            echo "========================================"
+            echo "$NAME"
+            echo "URL: $URL"
+            echo "========================================"
+
+            curl \
+              --location \
+              --silent \
+              --show-error \
+              --max-time 15 \
+              --connect-timeout 8 \
+              -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/138 Safari/537.36" \
+              -H "Accept: application/json,text/plain,*/*" \
+              -H "Referer: https://www.tsetmc.com/" \
+              -w "\nHTTP_STATUS:%{http_code}\nCONTENT_TYPE:%{content_type}\nSIZE:%{size_download}\nREMOTE_IP:%{remote_ip}\n" \
+              "$URL"
+
+            echo ""
+          }
+
+          test_url \
+            "MarketWatch market=0" \
+            "https://cdn.tsetmc.com/api/ClosingPrice/GetMarketWatch?market=0"
+
+          test_url \
+            "MarketWatch market=1" \
+            "https://cdn.tsetmc.com/api/ClosingPrice/GetMarketWatch?market=1"
+
+          test_url \
+            "MarketWatch market=2" \
+            "https://cdn.tsetmc.com/api/ClosingPrice/GetMarketWatch?market=2"
+
+          test_url \
+            "ClosingPrice MarketWatch" \
+            "https://cdn.tsetmc.com/api/ClosingPrice/GetMarketWatch"
+
+          test_url \
+            "MarketWatch market=0 format=json" \
+            "https://cdn.tsetmc.com/api/ClosingPrice/GetMarketWatch?market=0&format=json"
+
+          echo ""
+          echo "========================================"
+          echo "DISCOVERY FINISHED"
+          echo "========================================"
