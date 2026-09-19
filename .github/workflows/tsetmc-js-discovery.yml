@@ -1,4 +1,4 @@
-name: TSETMC JS API Discovery
+name: TSETMC JS Download Test
 
 on:
   workflow_dispatch:
@@ -6,68 +6,51 @@ on:
 jobs:
   discovery:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 2
 
     steps:
       - name: Download TSETMC JavaScript
         shell: bash
         run: |
-          set -e
+          set +e
 
           echo "========================================"
-          echo "TSETMC JAVASCRIPT API DISCOVERY"
+          echo "TSETMC JS DOWNLOAD TEST"
           echo "========================================"
 
           URL="https://www.tsetmc.com/main.f24603b0cc21e2598771.js"
 
           echo ""
-          echo "Downloading:"
+          echo "URL:"
           echo "$URL"
+
+          echo ""
+          echo "Downloading..."
 
           curl \
             --location \
-            --fail \
             --silent \
             --show-error \
             --max-time 30 \
+            --connect-timeout 10 \
             -A "Mozilla/5.0" \
+            -w "\nHTTP_STATUS:%{http_code}\nCONTENT_TYPE:%{content_type}\nSIZE:%{size_download}\nREMOTE_IP:%{remote_ip}\n" \
             "$URL" \
             -o tsetmc-main.js
 
           echo ""
-          echo "Downloaded bytes:"
-          wc -c tsetmc-main.js
+          echo "========================================"
+          echo "FILE INFORMATION"
+          echo "========================================"
+
+          if [ -f tsetmc-main.js ]; then
+            ls -lh tsetmc-main.js
+            wc -c tsetmc-main.js
+          else
+            echo "FILE_NOT_CREATED"
+          fi
 
           echo ""
           echo "========================================"
-          echo "SEARCHING API REFERENCES"
-          echo "========================================"
-
-          echo ""
-          echo "--- api/ references ---"
-          grep -oE '.{0,120}/api/.{0,200}' tsetmc-main.js | head -50 || true
-
-          echo ""
-          echo "--- cdn references ---"
-          grep -oE '.{0,120}cdn[^" ]*.{0,200}' tsetmc-main.js | head -50 || true
-
-          echo ""
-          echo "--- MarketWatch references ---"
-          grep -oE '.{0,150}[Mm]arket[Ww]atch.{0,250}' tsetmc-main.js | head -50 || true
-
-          echo ""
-          echo "--- ClosingPrice references ---"
-          grep -oE '.{0,150}[Cc]losing[Pp]rice.{0,250}' tsetmc-main.js | head -50 || true
-
-          echo ""
-          echo "--- ClientType references ---"
-          grep -oE '.{0,150}[Cc]lient[Tt]ype.{0,250}' tsetmc-main.js | head -50 || true
-
-          echo ""
-          echo "--- Order references ---"
-          grep -oE '.{0,150}[Oo]rder.{0,250}' tsetmc-main.js | head -50 || true
-
-          echo ""
-          echo "========================================"
-          echo "DISCOVERY FINISHED"
+          echo "TEST FINISHED"
           echo "========================================"
