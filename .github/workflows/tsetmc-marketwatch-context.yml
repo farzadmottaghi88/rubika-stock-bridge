@@ -1,0 +1,41 @@
+name: TSETMC MarketWatch Context
+
+on:
+  workflow_dispatch:
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download TSETMC main JS
+        run: |
+          set -e
+          URL="https://www.tsetmc.com/main.f24603b0cc21e2598771.js"
+          curl -L -sS -A "Mozilla/5.0" --retry 3 --retry-delay 2 --max-time 180 "$URL" -o main.js
+          echo "JS_SIZE=$(wc -c < main.js)"
+
+      - name: Extract GetMarketWatch contexts
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          s = Path("main.js").read_text(errors="ignore")
+          terms = ["GetMarketWatch", "GetMarketOverview", "GetClientType", "GetBestLimitsTop"]
+
+          for term in terms:
+              print("\n" + "="*80)
+              print("TERM:", term)
+              print("="*80)
+
+              positions = [m.start() for m in re.finditer(re.escape(term), s)]
+              print("COUNT:", len(positions))
+
+              for i, pos in enumerate(positions[:20], 1):
+                  start = max(0, pos - 1800)
+                  end = min(len(s), pos + 3000)
+                  ctx = s[start:end]
+                  print(f"\n--- OCCURRENCE {i} OFFSET {pos} ---")
+                  print(ctx)
+          PY
