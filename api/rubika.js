@@ -32,10 +32,7 @@ async function sendRubika(chatId, text) {
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text
-    })
+    body: JSON.stringify({ chat_id: chatId, text })
   });
 
   const raw = await response.text();
@@ -65,6 +62,14 @@ function extractIncomingMessage(body) {
   };
 }
 
+function normalizeCommand(text) {
+  return String(text ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[‌\u200c]/g, " ")
+    .replace(/\s+/g, " ");
+}
+
 async function handleIncomingUpdate(body) {
   const incoming = extractIncomingMessage(body);
 
@@ -72,39 +77,76 @@ async function handleIncomingUpdate(body) {
     return { handled: false, reason: "No chat_id in update" };
   }
 
-  const text = String(incoming.text ?? "").trim();
+  const text = normalizeCommand(incoming.text);
   if (!text) {
     return { handled: true, replied: false, reason: "Non-text update" };
   }
 
   let reply;
-  switch (text.toLowerCase()) {
+
+  switch (text) {
     case "/start":
     case "start":
       reply =
         "🤖 ربات پایش بورس ایران فعال شد.\n\n" +
         "دستورهای قابل استفاده:\n" +
-        "• /help — راهنما\n" +
-        "• /status — وضعیت ربات\n\n" +
-        "گزارش‌های بازار بعداً از طریق همین ربات ارسال می‌شوند.";
+        "• بررسی بازار — فهرست نمادهای منتخب\n" +
+        "• تحلیل بازار — تحلیل کامل‌تر\n" +
+        "• /status — وضعیت ربات\n" +
+        "• /help — راهنما\n\n" +
+        "موتور تحلیل بازار در مرحله اتصال به داده‌های بورس قرار دارد.";
       break;
+
     case "/help":
     case "help":
     case "راهنما":
       reply =
-        "📊 راهنمای ربات بورس\n\n" +
-        "/start — شروع ربات\n" +
-        "/status — وضعیت ربات\n\n" +
-        "بخش اتصال گزارش‌های زمان‌بندی‌شده در مرحله بعد فعال می‌شود.";
+        "📊 راهنمای ربات بورس ایران\n\n" +
+        "🔹 بررسی بازار\n" +
+        "نمادهای منتخب بر اساس فیلترهای تابلو، ورود پول، قدرت خریدار، حجم و روند.\n\n" +
+        "🔹 تحلیل بازار\n" +
+        "بررسی تفصیلی نمادها شامل ورود پول حقیقی، قدرت خریدار، سرانه خرید/فروش، حجم، ارزش معاملات، رفتار حقوقی، صف و عمق، نقدشوندگی، روند و ارزش‌گذاری.\n\n" +
+        "🔹 /status\n" +
+        "وضعیت اتصال ربات.\n\n" +
+        "در حال حاضر اتصال Rubika و Vercel فعال است؛ مرحله بعد اتصال موتور داده و تحلیل بورس است.";
       break;
+
     case "/status":
     case "status":
-      reply = "✅ ربات فعال است و اتصال Vercel برقرار است.";
+      reply =
+        "✅ وضعیت ربات\n\n" +
+        "Rubika: متصل ✅\n" +
+        "Vercel: متصل ✅\n" +
+        "Webhook: فعال ✅\n" +
+        "موتور تحلیل بورس: در حال اتصال ⏳";
       break;
+
+    case "بررسی بازار":
+    case "/بررسی بازار":
+    case "بررسی":
+    case "/market":
+    case "market":
+      reply =
+        "📈 درخواست «بررسی بازار» دریافت شد.\n\n" +
+        "اتصال موتور تحلیل و داده‌های بازار هنوز تکمیل نشده است. " +
+        "بعد از اتصال، پاسخ به‌صورت خودکار در همین چت ارسال می‌شود.";
+      break;
+
+    case "تحلیل بازار":
+    case "/تحلیل بازار":
+    case "تحلیل":
+    case "/analysis":
+    case "analysis":
+      reply =
+        "📊 درخواست «تحلیل بازار» دریافت شد.\n\n" +
+        "موتور تحلیل تفصیلی هنوز به منابع بازار متصل نشده است. " +
+        "در مرحله بعد همین فرمان به موتور تحلیل متصل می‌شود.";
+      break;
+
     default:
       reply =
         "پیامت دریافت شد ✅\n\n" +
-        "برای مشاهده دستورها /help را بفرست.";
+        "برای دستورات قابل استفاده /help را بفرست.";
   }
 
   const chunks = splitMessage(reply);
@@ -149,7 +191,6 @@ export default async function handler(req, res) {
     }
   }
 
-  // Rubika webhook update: respond directly to the user/chat.
   if (body?.update || body?.new_message || body?.type === "NewMessage") {
     try {
       const result = await handleIncomingUpdate(body);
@@ -163,7 +204,6 @@ export default async function handler(req, res) {
     }
   }
 
-  // Outbound bridge: another service can POST { chat_id, text }.
   const chatId = body?.chat_id;
   const text = body?.text ?? body?.report ?? body?.message;
 
