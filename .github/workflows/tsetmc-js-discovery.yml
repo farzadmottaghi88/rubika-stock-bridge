@@ -1,0 +1,73 @@
+name: TSETMC JS API Discovery
+
+on:
+  workflow_dispatch:
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Download TSETMC JavaScript
+        shell: bash
+        run: |
+          set -e
+
+          echo "========================================"
+          echo "TSETMC JAVASCRIPT API DISCOVERY"
+          echo "========================================"
+
+          URL="https://www.tsetmc.com/main.f24603b0cc21e2598771.js"
+
+          echo ""
+          echo "Downloading:"
+          echo "$URL"
+
+          curl \
+            --location \
+            --fail \
+            --silent \
+            --show-error \
+            --max-time 30 \
+            -A "Mozilla/5.0" \
+            "$URL" \
+            -o tsetmc-main.js
+
+          echo ""
+          echo "Downloaded bytes:"
+          wc -c tsetmc-main.js
+
+          echo ""
+          echo "========================================"
+          echo "SEARCHING API REFERENCES"
+          echo "========================================"
+
+          echo ""
+          echo "--- api/ references ---"
+          grep -oE '.{0,120}/api/.{0,200}' tsetmc-main.js | head -50 || true
+
+          echo ""
+          echo "--- cdn references ---"
+          grep -oE '.{0,120}cdn[^" ]*.{0,200}' tsetmc-main.js | head -50 || true
+
+          echo ""
+          echo "--- MarketWatch references ---"
+          grep -oE '.{0,150}[Mm]arket[Ww]atch.{0,250}' tsetmc-main.js | head -50 || true
+
+          echo ""
+          echo "--- ClosingPrice references ---"
+          grep -oE '.{0,150}[Cc]losing[Pp]rice.{0,250}' tsetmc-main.js | head -50 || true
+
+          echo ""
+          echo "--- ClientType references ---"
+          grep -oE '.{0,150}[Cc]lient[Tt]ype.{0,250}' tsetmc-main.js | head -50 || true
+
+          echo ""
+          echo "--- Order references ---"
+          grep -oE '.{0,150}[Oo]rder.{0,250}' tsetmc-main.js | head -50 || true
+
+          echo ""
+          echo "========================================"
+          echo "DISCOVERY FINISHED"
+          echo "========================================"
