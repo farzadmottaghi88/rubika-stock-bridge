@@ -1,31 +1,20 @@
-name: TSETMC JS Download Test
+name: TSETMC API String Extraction
 
 on:
   workflow_dispatch:
 
 jobs:
-  discovery:
+  extract:
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 3
 
     steps:
       - name: Download TSETMC JavaScript
         shell: bash
         run: |
-          set +e
-
-          echo "========================================"
-          echo "TSETMC JS DOWNLOAD TEST"
-          echo "========================================"
+          set -e
 
           URL="https://www.tsetmc.com/main.f24603b0cc21e2598771.js"
-
-          echo ""
-          echo "URL:"
-          echo "$URL"
-
-          echo ""
-          echo "Downloading..."
 
           curl \
             --location \
@@ -34,23 +23,58 @@ jobs:
             --max-time 30 \
             --connect-timeout 10 \
             -A "Mozilla/5.0" \
-            -w "\nHTTP_STATUS:%{http_code}\nCONTENT_TYPE:%{content_type}\nSIZE:%{size_download}\nREMOTE_IP:%{remote_ip}\n" \
             "$URL" \
             -o tsetmc-main.js
 
-          echo ""
+          echo "Downloaded:"
+          wc -c tsetmc-main.js
+
+      - name: Extract API related strings
+        shell: bash
+        run: |
+          set +e
+
           echo "========================================"
-          echo "FILE INFORMATION"
+          echo "TSETMC API STRING EXTRACTION"
           echo "========================================"
 
-          if [ -f tsetmc-main.js ]; then
-            ls -lh tsetmc-main.js
-            wc -c tsetmc-main.js
-          else
-            echo "FILE_NOT_CREATED"
-          fi
+          python3 <<'PY'
+          import re
+
+          path = "tsetmc-main.js"
+
+          with open(path, "rb") as f:
+              data = f.read()
+
+          text = data.decode("utf-8", errors="ignore")
+
+          patterns = [
+              r'https?://[^"\'\s]+',
+              r'/api/[^"\'\s]+',
+              r'api/[^"\'\s]+',
+              r'cdn[^"\'\s]+',
+              r'MarketWatch[^"\'\s]*',
+              r'ClosingPrice[^"\'\s]*',
+              r'ClientType[^"\'\s]*',
+              r'Order[^"\'\s]*',
+          ]
+
+          found = set()
+
+          for pattern in patterns:
+              for match in re.findall(pattern, text, flags=re.I):
+                  if len(match) < 300:
+                      found.add(match)
+
+          print("")
+          print("TOTAL UNIQUE MATCHES:", len(found))
+          print("")
+
+          for item in sorted(found):
+              print(item)
+          PY
 
           echo ""
           echo "========================================"
-          echo "TEST FINISHED"
+          echo "EXTRACTION FINISHED"
           echo "========================================"
