@@ -1,0 +1,30 @@
+name: TSETMC MarketWatch Endpoint Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test exact MarketWatch endpoint
+        run: |
+          set +e
+          BASE="https://cdn.tsetmc.com"
+          URL="$BASE/api/ClosingPrice/GetMarketWatch"
+          echo "URL=$URL"
+
+          for PARAMS in             "market=0&industrialGroup=0&paperTypes=0&showTraded=true&withBestLimits=true&hEven=0&RefID=0"             "market=0&industrialGroup=0&paperTypes=0&showTraded=true&withBestLimits=false&hEven=0&RefID=0"             "market=0&industrialGroup=0&paperTypes=0&showTraded=1&withBestLimits=1&hEven=0&RefID=0"; do
+            echo "================================"
+            echo "PARAMS=$PARAMS"
+            echo "================================"
+            curl -L -sS --max-time 30 -A "Mozilla/5.0" -D headers.txt -o body.txt "$URL?$PARAMS"
+            RC=$?
+            echo "CURL_EXIT=$RC"
+            echo "HEADERS:"
+            cat headers.txt 2>/dev/null
+            echo "SIZE=$(wc -c < body.txt 2>/dev/null)"
+            echo "BODY_HEAD:"
+            head -c 1500 body.txt 2>/dev/null
+            echo
+          done
