@@ -1,0 +1,75 @@
+name: TSETMC MarketWatch Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Test MarketWatch endpoints
+        run: |
+          set +e
+
+          BASE="https://www.tsetmc.com"
+
+          echo "================================"
+          echo "TEST 1"
+          echo "================================"
+
+          curl -L -sS \
+            -A "Mozilla/5.0" \
+            --max-time 20 \
+            -w "\nHTTP=%{http_code}\nSIZE=%{size_download}\n" \
+            "$BASE/api/ClosingPrice/GetMarketWatch" \
+            -o test1.txt
+
+          echo "BODY:"
+          head -c 1000 test1.txt
+          echo ""
+
+          echo "================================"
+          echo "TEST 2"
+          echo "================================"
+
+          curl -L -sS \
+            -A "Mozilla/5.0" \
+            --max-time 20 \
+            -w "\nHTTP=%{http_code}\nSIZE=%{size_download}\n" \
+            "$BASE/api/ClosingPrice/GetMarketWatch?market=0" \
+            -o test2.txt
+
+          echo "BODY:"
+          head -c 1000 test2.txt
+          echo ""
+
+          echo "================================"
+          echo "TEST 3"
+          echo "================================"
+
+          curl -L -sS \
+            -A "Mozilla/5.0" \
+            --max-time 20 \
+            -w "\nHTTP=%{http_code}\nSIZE=%{size_download}\n" \
+            "$BASE/api/ClosingPrice/GetMarketWatch?market=1" \
+            -o test3.txt
+
+          echo "BODY:"
+          head -c 1000 test3.txt
+          echo ""
+
+          echo "================================"
+          echo "TEST 4"
+          echo "================================"
+
+          curl -L -sS \
+            -A "Mozilla/5.0" \
+            --max-time 20 \
+            -w "\nHTTP=%{http_code}\nSIZE=%{size_download}\n" \
+            "$BASE/api/ClosingPrice/GetMarketWatch?market=2" \
+            -o test4.txt
+
+          echo "BODY:"
+          head -c 1000 test4.txt
+          echo ""
