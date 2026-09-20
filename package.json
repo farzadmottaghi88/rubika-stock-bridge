@@ -1,8 +1,11 @@
 {
-  "name": "express",
+  "name": "rubika-stock-bridge",
   "version": "1.0.0",
-  "description": "",
+  "description": "Rubika stock market bridge",
   "type": "module",
+  "scripts": {
+    "test": "node --test tests/market-engine.test.js"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
