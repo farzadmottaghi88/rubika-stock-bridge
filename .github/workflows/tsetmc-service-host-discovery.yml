@@ -1,0 +1,30 @@
+name: TSETMC Service Host Discovery
+
+on:
+  workflow_dispatch:
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download main JavaScript
+        run: |
+          set -e
+          curl -L -sS -A "Mozilla/5.0" --retry 3 --max-time 180 "https://www.tsetmc.com/main.f24603b0cc21e2598771.js" -o main.js
+          echo "JS_SIZE=$(wc -c < main.js)"
+
+      - name: Extract service host resolver
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s = Path('main.js').read_text(errors='ignore')
+          terms = ['_L:', '_L=', 'function _L', 'ClosingPrice', 'MarketData']
+          for term in terms:
+              print('\n' + '='*72 + '\nTERM=' + term + '\n' + '='*72)
+              positions = [m.start() for m in re.finditer(re.escape(term), s)]
+              print('COUNT=', len(positions))
+              for pos in positions[:10]:
+                  print('\n--- OFFSET', pos, '---')
+                  print(s[max(0,pos-900):min(len(s),pos+1500)])
+          PY
