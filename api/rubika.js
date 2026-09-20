@@ -1,5 +1,5 @@
 import { collectLiveMarket } from "../lib/tsetmc-source.js";
-import { analyzeMarket } from "../lib/market-engine.js";
+import { analyzeMarket, analyzeSignals } from "../lib/market-engine.js";
 
 const MAX_MESSAGE_LENGTH = 3500;
 
@@ -162,6 +162,41 @@ async function handleIncomingUpdate(body) {
             return `${i + 1}. ${r.symbol} — ${reasons.slice(0, 2).join("، ") || "فیلتر ترکیبی"}`;
           }).join("\n")
         : "📈 داده زنده دریافت شد، اما با فیلترهای فعلی نماد واجد شرایط پیدا نشد.";
+      break;
+    }
+
+    case "سیگنال بازار":
+    case "/سیگنال بازار":
+    case "سیگنال":
+    case "/signals":
+    case "signals": {
+      const live = await collectLiveMarket();
+      if (!live.verified) {
+        reply = "⚠️ داده زنده بازار تأیید نشد؛ سیگنال تولید نشد.";
+        break;
+      }
+
+      const result = analyzeSignals(live.rows);
+      const rows = result.selected;
+      const fmt = value => Number.isFinite(Number(value)) ? Number(value).toLocaleString("en-US") : "-";
+      const pct = value => Number.isFinite(Number(value)) ? `${Number(value).toFixed(1)}%` : "-";
+      const rr = value => Number.isFinite(Number(value)) ? `${Number(value).toFixed(2)}x` : "-";
+      const receivedAt = live.receivedAt ? new Date(live.receivedAt).toLocaleString("fa-IR") : "-";
+
+      reply = rows.length
+        ? "🎯 سیگنال بازار — فقط موارد دارای فیلتر کامل\\n" +
+          `زمان: ${receivedAt} | اسکن: ${result.scanned} نماد | سیگنال: ${rows.length}\\n\\n` +
+          rows.map((r, i) => {
+            const p = r.tradePlan;
+            return [
+              `${i + 1}. ${r.symbol} | امتیاز ${r.score}`,
+              `ورود: ${fmt(p.entry)} | حدضرر: ${fmt(p.stop)} | هدف: ${fmt(p.target)}`,
+              `ریسک: ${pct(p.riskPercent)} | بازده هدف: ${pct(p.rewardPercent)} | R/R: ${rr(p.riskReward)}`,
+              `پول حقیقی: ${rr(r.realMoneyFlowRatio)} | قدرت خریدار: ${rr(r.buyerPower)} | حجم: ${rr(r.volumeRatio30d)}`,
+              `حمایت۲۰: ${fmt(r.support20d)} | مقاومت۲۰: ${fmt(r.resistance20d)} | ارزش نظری: ${fmt(r.theoreticalPrice)}`
+            ].join("\\n");
+          }).join("\\n\\n")
+        : "🎯 با داده فعلی، نمادی که هم فیلتر تابلو/روند و هم R/R حداقل ۲ داشته باشد پیدا نشد.";
       break;
     }
 
