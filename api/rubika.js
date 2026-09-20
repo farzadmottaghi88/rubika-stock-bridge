@@ -101,7 +101,7 @@ async function handleIncomingUpdate(body) {
         "• تحلیل بازار — تحلیل کامل‌تر\n" +
         "• /status — وضعیت ربات\n" +
         "• /help — راهنما\n\n" +
-        "موتور تحلیل بازار در مرحله اتصال به داده‌های بورس قرار دارد.";
+        "داده زنده و موتور تحلیل در حال پایش و تکمیل هستند.";
       break;
 
     case "/help":
@@ -115,7 +115,7 @@ async function handleIncomingUpdate(body) {
         "بررسی تفصیلی نمادها شامل ورود پول حقیقی، قدرت خریدار، سرانه خرید/فروش، حجم، ارزش معاملات، رفتار حقوقی، صف و عمق، نقدشوندگی، روند و ارزش‌گذاری.\n\n" +
         "🔹 /status\n" +
         "وضعیت اتصال ربات.\n\n" +
-        "در حال حاضر اتصال Rubika و Vercel فعال است؛ مرحله بعد اتصال موتور داده و تحلیل بورس است.";
+        "اتصال Rubika و Vercel فعال است؛ داده زنده TSETMC نیز در حال اعتبارسنجی است.";
       break;
 
     case "/status":
@@ -125,14 +125,14 @@ async function handleIncomingUpdate(body) {
         `• ${d.source}: ${d.validMarketRows || 0} نماد معتبر${d.error ? ` — ${d.error}` : ""}`
       ).join("\n") || "• بدون داده";
       reply =
-        "✅ وضعیت ربات\\n\\n" +
-        "Rubika: متصل ✅\\n" +
-        "Vercel: متصل ✅\\n" +
-        "Webhook: فعال ✅\\n" +
-        `داده زنده بورس: ${live.verified ? "تأیید شد ✅" : "تأیید نشد ❌"}\\n` +
-        `منبع: ${live.source || "نامشخص"}\\n` +
-        `تعداد نماد معتبر: ${live.symbolCount}\\n\\n` +
-        "Diagnostics:\\n" + diag;
+        "✅ وضعیت ربات\n\n" +
+        "Rubika: متصل ✅\n" +
+        "Vercel: متصل ✅\n" +
+        "Webhook: فعال ✅\n" +
+        `داده زنده بورس: ${live.verified ? "تأیید شد ✅" : "تأیید نشد ❌"}\n` +
+        `منبع: ${live.source || "نامشخص"}\n` +
+        `تعداد نماد معتبر: ${live.symbolCount}\n\n` +
+        "Diagnostics:\n" + diag;
       break;
     }
 
@@ -153,7 +153,7 @@ async function handleIncomingUpdate(body) {
         .sort((a,b) => (Number(b.realMoneyFlowRatio) * Number(b.buyerPower)) - (Number(a.realMoneyFlowRatio) * Number(a.buyerPower)))
         .slice(0,10);
       reply = candidates.length
-        ? "📈 بررسی بازار — داده زنده\\n\\n" + candidates.map((r,i) =>
+        ? "📈 بررسی بازار — داده زنده\n\n" + candidates.map((r,i) =>
             `${i+1}. ${r.symbol} — ورود پول حقیقی ${Number(r.realMoneyFlowRatio).toFixed(2)}x | قدرت خریدار ${Number(r.buyerPower).toFixed(2)}x`
           ).join("\n")
         : "📈 داده زنده دریافت شد، اما با فیلترهای فعلی نماد واجد شرایط پیدا نشد.";
@@ -176,7 +176,7 @@ async function handleIncomingUpdate(body) {
         .sort((a,b) => (Number(b.realMoneyFlow || 0)) - (Number(a.realMoneyFlow || 0)))
         .slice(0,15);
       reply = rows.length
-        ? "📊 تحلیل بازار — داده زنده\\n\\n" +
+        ? "📊 تحلیل بازار — داده زنده\n\n" +
           rows.map((r,i) =>
             `${i+1}. ${r.symbol} | قیمت ${r.lastPrice ?? "-"} | حجم ${r.volume ?? "-"} | ارزش ${r.tradeValue ?? "-"} | پول حقیقی ${r.realMoneyFlow ?? "-"} | قدرت ${Number(r.buyerPower).toFixed(2)}x | صف تقاضا ${r.bestBidVolume ?? "-"}`
           ).join("\n") +
