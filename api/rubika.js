@@ -182,9 +182,10 @@ async function handleIncomingUpdate(body) {
       const pct = value => Number.isFinite(Number(value)) ? `${Number(value).toFixed(1)}%` : "-";
       const ratio = value => Number.isFinite(Number(value)) ? `${Number(value).toFixed(2)}x` : "-";
 
+      const receivedAt = live.receivedAt ? new Date(live.receivedAt).toLocaleString("fa-IR") : "-";
       reply = rows.length
         ? "📊 تحلیل بازار — داده زنده TSETMC\n" +
-          `اسکن: ${result.scanned} نماد | خروجی: ${rows.length} نماد\n\n` +
+          `زمان دریافت: ${receivedAt} | اسکن: ${result.scanned} نماد | خروجی: ${rows.length} نماد\n\n` +
           rows.map((r, i) => [
             `${i + 1}. ${r.symbol} | امتیاز ${r.score}`,
             `پول حقیقی: ${ratio(r.realMoneyFlowRatio)} | قدرت: ${ratio(r.buyerPower)}`,
