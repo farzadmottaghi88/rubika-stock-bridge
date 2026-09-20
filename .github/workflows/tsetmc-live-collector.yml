@@ -1,6 +1,8 @@
 name: TSETMC Live Collector Validation
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
