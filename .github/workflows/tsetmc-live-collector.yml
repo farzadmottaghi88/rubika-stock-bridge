@@ -3,7 +3,13 @@ name: TSETMC Live Collector Validation
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: "*/5 9-12 * * 6,0-3"
+      timezone: "Asia/Tehran"
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   validate:
@@ -12,6 +18,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -21,41 +29,34 @@ jobs:
       - name: Run market engine regression tests
         run: npm test
 
-      - name: Check TSETMC bulk endpoints
+      - name: Collect verified TSETMC snapshot
+        run: node scripts/collect-tsetmc-snapshot.mjs
+
+      - name: Save snapshot for Vercel
         shell: bash
         run: |
-          python - <<'PY'
-          import json, time, urllib.request
+          cp data/live-market.json /tmp/live-market.json
+          git fetch origin market-data || true
 
-          urls = [
-              ("cdn_marketwatch", "https://cdn.tsetmc.com/api/ClosingPrice/GetMarketWatch?market=0&paperTypes[0]=1&paperTypes[1]=2&paperTypes[2]=3&paperTypes[3]=4&paperTypes[4]=5&paperTypes[5]=6&paperTypes[6]=7&paperTypes[7]=8&paperTypes[8]=9&showTraded=false&withBestLimits=false&hEven=0&RefID=0"),
-              ("cdn_client_type_all", "https://cdn.tsetmc.com/api/ClientType/GetClientTypeAll"),
-              ("cdn_daily_all", "https://cdn.tsetmc.com/api/ClosingPrice/GetClosingPriceDailyAllInst"),
-              ("legacy_marketwatch", "https://old.tsetmc.com/tsev2/excel/MarketWatchPlus.aspx?d=0"),
-          ]
+          if git show-ref --verify --quiet refs/remotes/origin/market-data; then
+            git checkout -B market-data origin/market-data
+            rm -rf data
+          else
+            git checkout --orphan market-data
+            git rm -rf . || true
+          fi
 
-          ua = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
+          mkdir -p data
+          cp /tmp/live-market.json data/live-market.json
 
-          for name, url in urls:
-              started = time.time()
-              try:
-                  req = urllib.request.Request(url, headers={"User-Agent": ua, "Accept": "*/*"})
-                  with urllib.request.urlopen(req, timeout=15) as r:
-                      body = r.read()
-                      ctype = r.headers.get("content-type", "")
-                      print(json.dumps({
-                          "source": name,
-                          "status": r.status,
-                          "content_type": ctype,
-                          "bytes": len(body),
-                          "elapsed_ms": round((time.time()-started)*1000),
-                          "prefix": body[:120].decode("utf-8", "replace")
-                      }, ensure_ascii=False))
-              except Exception as e:
-                  print(json.dumps({
-                      "source": name,
-                      "status": "ERROR",
-                      "elapsed_ms": round((time.time()-started)*1000),
-                      "error": repr(e)
-                  }, ensure_ascii=False))
-          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/live-market.json
+
+          if git diff --cached --quiet; then
+            echo "Snapshot unchanged; nothing to push."
+            exit 0
+          fi
+
+          git commit -m "Update live TSETMC snapshot"
+          git push origin HEAD:market-data
