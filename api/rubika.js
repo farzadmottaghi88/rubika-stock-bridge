@@ -2,6 +2,11 @@ import { collectLiveMarket } from "../lib/tsetmc-source.js";
 
 const MAX_MESSAGE_LENGTH = 3500;
 
+function formatNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n.toLocaleString("en-US") : "-";
+}
+
 function splitMessage(text, maxLength = MAX_MESSAGE_LENGTH) {
   const normalized = String(text).replace(/\r\n/g, "\n").trim();
   if (normalized.length <= maxLength) return [normalized];
