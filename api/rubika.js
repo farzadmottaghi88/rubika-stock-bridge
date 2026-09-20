@@ -1,4 +1,5 @@
 import { collectLiveMarket } from "../lib/tsetmc-source.js";
+import { analyzeMarket } from "../lib/market-engine.js";
 
 const MAX_MESSAGE_LENGTH = 3500;
 
@@ -146,16 +147,12 @@ async function handleIncomingUpdate(body) {
         reply = "⚠️ داده زنده بازار تأیید نشد؛ تحلیل و سیگنال تولید نشد.";
         break;
       }
-      const candidates = live.rows
-        .filter(r => Number.isFinite(Number(r.realMoneyFlowRatio)) && Number(r.realMoneyFlowRatio) >= 1)
-        .filter(r => Number.isFinite(Number(r.buyerPower)) && Number(r.buyerPower) > 1)
-        .filter(r => Number(r.tradeCount) > 30)
-        .sort((a,b) => (Number(b.realMoneyFlowRatio) * Number(b.buyerPower)) - (Number(a.realMoneyFlowRatio) * Number(a.buyerPower)))
-        .slice(0,10);
+      const result = analyzeMarket(live.rows);
+      const candidates = result.selected;
       reply = candidates.length
-        ? "📈 بررسی بازار — داده زنده\n\n" + candidates.map((r,i) =>
-            `${i+1}. ${r.symbol} — ورود پول حقیقی ${Number(r.realMoneyFlowRatio).toFixed(2)}x | قدرت خریدار ${Number(r.buyerPower).toFixed(2)}x`
-          ).join("\n")
+        ? "📈 بررسی بازار — داده زنده و فیلتر ترکیبی\\n\\n" + candidates.map((r,i) =>
+            `${i+1}. ${r.symbol} — امتیاز ${r.score} | پول حقیقی ${Number(r.realMoneyFlowRatio).toFixed(2)}x | قدرت ${Number(r.buyerPower).toFixed(2)}x | حجم ${Number(r.volumeRatio30d).toFixed(2)}x | روند ${Number(r.sma20) > Number(r.sma50) ? "مثبت" : "خنثی"}`
+          ).join("\\n")
         : "📈 داده زنده دریافت شد، اما با فیلترهای فعلی نماد واجد شرایط پیدا نشد.";
       break;
     }
