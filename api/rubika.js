@@ -195,7 +195,7 @@ async function handleIncomingUpdate(body) {
             `عمق: تقاضا ${fmt(r.bestBidVolume)} / عرضه ${fmt(r.bestAskVolume)} | نسبت ${ratio(r.orderBookDemandRatio)}`,
             `نقدشوندگی: ${Math.round(r.liquidityScore ?? 0)} | روند: ${r.trendState}`,
             `SMA20/50: ${fmt(r.sma20)} / ${fmt(r.sma50)} | مقاومت۲۰: ${fmt(r.resistance20d)} | شکست: ${r.resistanceBreak ? "بله" : "خیر"}`,
-            `ارزش‌گذاری: ${r.valuationState}`
+            `ارزش‌گذاری: ${r.valuationState} | EPS ${fmt(r.eps)} | P/E گروه ${ratio(r.sectorPe)} | نظری ${fmt(r.theoreticalPrice)} | فاصله ${pct(r.peGapPercent)}`
           ].join("\n")).join("\n\n")
         : "📊 داده زنده دریافت شد، اما با فیلترهای فعلی نماد واجد شرایط پیدا نشد.";
       break;
