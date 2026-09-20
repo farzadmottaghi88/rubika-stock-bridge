@@ -147,12 +147,20 @@ async function handleIncomingUpdate(body) {
         reply = "⚠️ داده زنده بازار تأیید نشد؛ تحلیل و سیگنال تولید نشد.";
         break;
       }
+
       const result = analyzeMarket(live.rows);
       const candidates = result.selected;
       reply = candidates.length
-        ? "📈 بررسی بازار — داده زنده و فیلتر ترکیبی\\n\\n" + candidates.map((r,i) =>
-            `${i+1}. ${r.symbol} — امتیاز ${r.score} | پول حقیقی ${Number(r.realMoneyFlowRatio).toFixed(2)}x | قدرت ${Number(r.buyerPower).toFixed(2)}x | حجم ${Number(r.volumeRatio30d).toFixed(2)}x | روند ${Number(r.sma20) > Number(r.sma50) ? "مثبت" : "خنثی"}`
-          ).join("\\n")
+        ? "📈 بررسی بازار — نمادهای منتخب\n\n" +
+          candidates.map((r, i) => {
+            const reasons = [];
+            if (Number(r.realMoneyFlowRatio) > 1) reasons.push(`پول حقیقی ${Number(r.realMoneyFlowRatio).toFixed(1)}x`);
+            if (Number(r.buyerPower) > 1) reasons.push(`قدرت خریدار ${Number(r.buyerPower).toFixed(1)}x`);
+            if (Number(r.volumeRatio30d) >= 3) reasons.push(`حجم ${Number(r.volumeRatio30d).toFixed(1)}x`);
+            if (r.resistanceBreak) reasons.push("شکست مقاومت ۲۰روزه");
+            else if (Number(r.sma20) > Number(r.sma50)) reasons.push("SMA20>SMA50");
+            return `${i + 1}. ${r.symbol} — ${reasons.slice(0, 2).join("، ") || "فیلتر ترکیبی"}`;
+          }).join("\n")
         : "📈 داده زنده دریافت شد، اما با فیلترهای فعلی نماد واجد شرایط پیدا نشد.";
       break;
     }
@@ -167,18 +175,29 @@ async function handleIncomingUpdate(body) {
         reply = "⚠️ داده زنده بازار تأیید نشد؛ تحلیل و سیگنال تولید نشد.";
         break;
       }
-      const rows = live.rows
-        .filter(r => Number(r.tradeCount) > 30)
-        .filter(r => Number.isFinite(Number(r.realMoneyFlowRatio)))
-        .sort((a,b) => (Number(b.realMoneyFlow || 0)) - (Number(a.realMoneyFlow || 0)))
-        .slice(0,15);
+
+      const result = analyzeMarket(live.rows);
+      const rows = result.selected;
+      const fmt = value => Number.isFinite(Number(value)) ? Number(value).toLocaleString("en-US") : "-";
+      const pct = value => Number.isFinite(Number(value)) ? `${Number(value).toFixed(1)}%` : "-";
+      const ratio = value => Number.isFinite(Number(value)) ? `${Number(value).toFixed(2)}x` : "-";
+
       reply = rows.length
-        ? "📊 تحلیل بازار — داده زنده\n\n" +
-          rows.map((r,i) =>
-            `${i+1}. ${r.symbol} | قیمت ${r.lastPrice ?? "-"} | حجم ${r.volume ?? "-"} | ارزش ${r.tradeValue ?? "-"} | پول حقیقی ${r.realMoneyFlow ?? "-"} | قدرت ${Number(r.buyerPower).toFixed(2)}x | صف تقاضا ${r.bestBidVolume ?? "-"}`
-          ).join("\n") +
-          "\n\nℹ️ نسبت حجم به میانگین ۳۰روزه و ارزش‌گذاری گروهی هنوز در لایه بعدی collector تکمیل می‌شود."
-        : "📊 داده زنده دریافت شد، اما رکورد قابل تحلیل کافی نبود.";
+        ? "📊 تحلیل بازار — داده زنده TSETMC\n" +
+          `اسکن: ${result.scanned} نماد | خروجی: ${rows.length} نماد\n\n` +
+          rows.map((r, i) => [
+            `${i + 1}. ${r.symbol} | امتیاز ${r.score}`,
+            `پول حقیقی: ${ratio(r.realMoneyFlowRatio)} | قدرت: ${ratio(r.buyerPower)}`,
+            `سرانه حقیقی خرید/فروش: ${fmt(r.avgNaturalBuyValue)} / ${fmt(r.avgNaturalSellValue)} ریال`,
+            `حجم: ${fmt(r.volume)} | میانگین۳۰: ${fmt(r.volumeAvg30d)} | نسبت: ${ratio(r.volumeRatio30d)}`,
+            `ارزش: ${fmt(r.tradeValue)} | معاملات: ${fmt(r.tradeCount)}`,
+            `حقوقی: ${r.legalBehavior} | خالص: ${fmt(r.legalNetVolume)}`,
+            `عمق: تقاضا ${fmt(r.bestBidVolume)} / عرضه ${fmt(r.bestAskVolume)} | نسبت ${ratio(r.orderBookDemandRatio)}`,
+            `نقدشوندگی: ${Math.round(r.liquidityScore ?? 0)} | روند: ${r.trendState}`,
+            `SMA20/50: ${fmt(r.sma20)} / ${fmt(r.sma50)} | مقاومت۲۰: ${fmt(r.resistance20d)} | شکست: ${r.resistanceBreak ? "بله" : "خیر"}`,
+            `ارزش‌گذاری: ${r.valuationState}`
+          ].join("\n")).join("\n\n")
+        : "📊 داده زنده دریافت شد، اما با فیلترهای فعلی نماد واجد شرایط پیدا نشد.";
       break;
     }
 
