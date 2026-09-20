@@ -10,6 +10,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run market engine regression tests
+        run: npm test
+
       - name: Check TSETMC bulk endpoints
         shell: bash
         run: |
