@@ -15,6 +15,7 @@ export default async function handler(req, res) {
     received_at: result.receivedAt,
     market_date: result.marketDate,
     symbol_count: result.symbolCount,
+    latest_heven: result.latestHeven ?? null,
     diagnostics: result.diagnostics,
   });
 }
