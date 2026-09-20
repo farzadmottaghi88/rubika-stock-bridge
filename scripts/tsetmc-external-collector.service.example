@@ -1,0 +1,18 @@
+[Unit]
+Description=Rubika Stock Bridge TSETMC External Collector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/rubika-stock-bridge
+Environment=GITHUB_REPO=farzadmottaghi88/rubika-stock-bridge
+Environment=GITHUB_BRANCH=market-data
+Environment=COLLECT_INTERVAL_MS=60000
+Environment=GITHUB_TOKEN=REPLACE_WITH_A_GITHUB_FINE_GRAINED_TOKEN
+ExecStart=/usr/bin/node /opt/rubika-stock-bridge/scripts/tsetmc-external-collector.mjs
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
