@@ -100,6 +100,7 @@ async function handleIncomingUpdate(body) {
         "دستورهای قابل استفاده:\n" +
         "• بررسی بازار — فهرست نمادهای منتخب\n" +
         "• تحلیل بازار — تحلیل کامل‌تر\n" +
+        "• سیگنال بازار — فقط سیگنال‌های دارای فیلتر کامل\n" +
         "• /status — وضعیت ربات\n" +
         "• /help — راهنما\n\n" +
         "داده زنده و موتور تحلیل در حال پایش و تکمیل هستند.";
@@ -114,17 +115,19 @@ async function handleIncomingUpdate(body) {
         "نمادهای منتخب بر اساس فیلترهای تابلو، ورود پول، قدرت خریدار، حجم و روند.\n\n" +
         "🔹 تحلیل بازار\n" +
         "بررسی تفصیلی نمادها شامل ورود پول حقیقی، قدرت خریدار، سرانه خرید/فروش، حجم، ارزش معاملات، رفتار حقوقی، صف و عمق، نقدشوندگی، روند و ارزش‌گذاری.\n\n" +
+        "🔹 سیگنال بازار\n" +
+        "فقط مواردی که حجم، روند، نقدشوندگی، جریان پول و R/R حداقل ۲ را هم‌زمان پاس کنند.\n\n" +
         "🔹 /status\n" +
-        "وضعیت اتصال ربات.\n\n" +
-        "اتصال Rubika و Vercel فعال است؛ داده زنده TSETMC نیز در حال اعتبارسنجی است.";
+        "وضعیت اتصال ربات و اعتبار داده زنده.";
       break;
 
     case "/status":
     case "status": {
       const live = await collectLiveMarket();
       const diag = live.diagnostics?.map(d =>
-        `• ${d.source}: ${d.validMarketRows || 0} نماد معتبر${d.error ? ` — ${d.error}` : ""}`
+        `• ${d.source}: ${d.validMarketRows || 0} نماد معتبر | وضعیت ${d.reachable ? "قابل دسترس" : "غیرقابل دسترس"} | ${d.blocked ? "مسدود" : "غیرمسدود"}${d.error ? ` — ${d.error}` : ""}`
       ).join("\n") || "• بدون داده";
+
       reply =
         "✅ وضعیت ربات\n\n" +
         "Rubika: متصل ✅\n" +
@@ -132,7 +135,8 @@ async function handleIncomingUpdate(body) {
         "Webhook: فعال ✅\n" +
         `داده زنده بورس: ${live.verified ? "تأیید شد ✅" : "تأیید نشد ❌"}\n` +
         `منبع: ${live.source || "نامشخص"}\n` +
-        `تعداد نماد معتبر: ${live.symbolCount}\n\n` +
+        `تعداد نماد معتبر: ${live.symbolCount}\n` +
+        `آخرین زمان داده: ${live.receivedAt ? new Date(live.receivedAt).toLocaleString("fa-IR") : "-"}\n\n` +
         "Diagnostics:\n" + diag;
       break;
     }
@@ -184,8 +188,8 @@ async function handleIncomingUpdate(body) {
       const receivedAt = live.receivedAt ? new Date(live.receivedAt).toLocaleString("fa-IR") : "-";
 
       reply = rows.length
-        ? "🎯 سیگنال بازار — فقط موارد دارای فیلتر کامل\\n" +
-          `زمان: ${receivedAt} | اسکن: ${result.scanned} نماد | سیگنال: ${rows.length}\\n\\n` +
+        ? "🎯 سیگنال بازار — فقط موارد دارای فیلتر کامل\n" +
+          `زمان: ${receivedAt} | اسکن: ${result.scanned} نماد | سیگنال: ${rows.length}\n\n` +
           rows.map((r, i) => {
             const p = r.tradePlan;
             return [
@@ -194,8 +198,8 @@ async function handleIncomingUpdate(body) {
               `ریسک: ${pct(p.riskPercent)} | بازده هدف: ${pct(p.rewardPercent)} | R/R: ${rr(p.riskReward)}`,
               `پول حقیقی: ${rr(r.realMoneyFlowRatio)} | قدرت خریدار: ${rr(r.buyerPower)} | حجم: ${rr(r.volumeRatio30d)}`,
               `حمایت۲۰: ${fmt(r.support20d)} | مقاومت۲۰: ${fmt(r.resistance20d)} | ارزش نظری: ${fmt(r.theoreticalPrice)}`
-            ].join("\\n");
-          }).join("\\n\\n")
+            ].join("\n");
+          }).join("\n\n")
         : "🎯 با داده فعلی، نمادی که هم فیلتر تابلو/روند و هم R/R حداقل ۲ داشته باشد پیدا نشد.";
       break;
     }
@@ -216,8 +220,8 @@ async function handleIncomingUpdate(body) {
       const fmt = value => Number.isFinite(Number(value)) ? Number(value).toLocaleString("en-US") : "-";
       const pct = value => Number.isFinite(Number(value)) ? `${Number(value).toFixed(1)}%` : "-";
       const ratio = value => Number.isFinite(Number(value)) ? `${Number(value).toFixed(2)}x` : "-";
-
       const receivedAt = live.receivedAt ? new Date(live.receivedAt).toLocaleString("fa-IR") : "-";
+
       reply = rows.length
         ? "📊 تحلیل بازار — داده زنده TSETMC\n" +
           `زمان دریافت: ${receivedAt} | اسکن: ${result.scanned} نماد | خروجی: ${rows.length} نماد\n\n` +
@@ -238,9 +242,7 @@ async function handleIncomingUpdate(body) {
     }
 
     default:
-      reply =
-        "پیامت دریافت شد ✅\n\n" +
-        "برای دستورات قابل استفاده /help را بفرست.";
+      reply = "پیامت دریافت شد ✅\n\nبرای دستورات قابل استفاده /help را بفرست.";
   }
 
   const chunks = splitMessage(reply);
