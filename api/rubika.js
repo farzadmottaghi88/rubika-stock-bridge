@@ -1,3 +1,5 @@
+import { collectLiveMarket } from "../lib/tsetmc-source.js";
+
 const MAX_MESSAGE_LENGTH = 3500;
 
 function splitMessage(text, maxLength = MAX_MESSAGE_LENGTH) {
@@ -112,36 +114,71 @@ async function handleIncomingUpdate(body) {
       break;
 
     case "/status":
-    case "status":
+    case "status": {
+      const live = await collectLiveMarket();
+      const diag = live.diagnostics?.map(d =>
+        `• ${d.source}: ${d.validMarketRows || 0} نماد معتبر${d.error ? ` — ${d.error}` : ""}`
+      ).join("\n") || "• بدون داده";
       reply =
-        "✅ وضعیت ربات\n\n" +
-        "Rubika: متصل ✅\n" +
-        "Vercel: متصل ✅\n" +
-        "Webhook: فعال ✅\n" +
-        "موتور تحلیل بورس: در حال اتصال ⏳";
+        "✅ وضعیت ربات\\n\\n" +
+        "Rubika: متصل ✅\\n" +
+        "Vercel: متصل ✅\\n" +
+        "Webhook: فعال ✅\\n" +
+        `داده زنده بورس: ${live.verified ? "تأیید شد ✅" : "تأیید نشد ❌"}\\n` +
+        `منبع: ${live.source || "نامشخص"}\\n` +
+        `تعداد نماد معتبر: ${live.symbolCount}\\n\\n` +
+        "Diagnostics:\\n" + diag;
       break;
+    }
 
     case "بررسی بازار":
     case "/بررسی بازار":
     case "بررسی":
     case "/market":
-    case "market":
-      reply =
-        "📈 درخواست «بررسی بازار» دریافت شد.\n\n" +
-        "اتصال موتور تحلیل و داده‌های بازار هنوز تکمیل نشده است. " +
-        "بعد از اتصال، پاسخ به‌صورت خودکار در همین چت ارسال می‌شود.";
+    case "market": {
+      const live = await collectLiveMarket();
+      if (!live.verified) {
+        reply = "⚠️ داده زنده بازار تأیید نشد؛ تحلیل و سیگنال تولید نشد.";
+        break;
+      }
+      const candidates = live.rows
+        .filter(r => Number.isFinite(Number(r.realMoneyFlowRatio)) && Number(r.realMoneyFlowRatio) >= 1)
+        .filter(r => Number.isFinite(Number(r.buyerPower)) && Number(r.buyerPower) > 1)
+        .filter(r => Number(r.tradeCount) > 30)
+        .sort((a,b) => (Number(b.realMoneyFlowRatio) * Number(b.buyerPower)) - (Number(a.realMoneyFlowRatio) * Number(a.buyerPower)))
+        .slice(0,10);
+      reply = candidates.length
+        ? "📈 بررسی بازار — داده زنده\\n\\n" + candidates.map((r,i) =>
+            `${i+1}. ${r.symbol} — ورود پول حقیقی ${Number(r.realMoneyFlowRatio).toFixed(2)}x | قدرت خریدار ${Number(r.buyerPower).toFixed(2)}x`
+          ).join("\n")
+        : "📈 داده زنده دریافت شد، اما با فیلترهای فعلی نماد واجد شرایط پیدا نشد.";
       break;
+    }
 
     case "تحلیل بازار":
     case "/تحلیل بازار":
     case "تحلیل":
     case "/analysis":
-    case "analysis":
-      reply =
-        "📊 درخواست «تحلیل بازار» دریافت شد.\n\n" +
-        "موتور تحلیل تفصیلی هنوز به منابع بازار متصل نشده است. " +
-        "در مرحله بعد همین فرمان به موتور تحلیل متصل می‌شود.";
+    case "analysis": {
+      const live = await collectLiveMarket();
+      if (!live.verified) {
+        reply = "⚠️ داده زنده بازار تأیید نشد؛ تحلیل و سیگنال تولید نشد.";
+        break;
+      }
+      const rows = live.rows
+        .filter(r => Number(r.tradeCount) > 30)
+        .filter(r => Number.isFinite(Number(r.realMoneyFlowRatio)))
+        .sort((a,b) => (Number(b.realMoneyFlow || 0)) - (Number(a.realMoneyFlow || 0)))
+        .slice(0,15);
+      reply = rows.length
+        ? "📊 تحلیل بازار — داده زنده\\n\\n" +
+          rows.map((r,i) =>
+            `${i+1}. ${r.symbol} | قیمت ${r.lastPrice ?? "-"} | حجم ${r.volume ?? "-"} | ارزش ${r.tradeValue ?? "-"} | پول حقیقی ${r.realMoneyFlow ?? "-"} | قدرت ${Number(r.buyerPower).toFixed(2)}x | صف تقاضا ${r.bestBidVolume ?? "-"}`
+          ).join("\n") +
+          "\n\nℹ️ نسبت حجم به میانگین ۳۰روزه و ارزش‌گذاری گروهی هنوز در لایه بعدی collector تکمیل می‌شود."
+        : "📊 داده زنده دریافت شد، اما رکورد قابل تحلیل کافی نبود.";
       break;
+    }
 
     default:
       reply =
