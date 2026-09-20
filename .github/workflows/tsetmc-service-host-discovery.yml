@@ -5,13 +5,32 @@ on:
 
 jobs:
   discover:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - name: Download main JavaScript
+      - name: Download main JavaScript in chunks
         run: |
-          set -e
-          curl -L -sS -A "Mozilla/5.0" --retry 3 --max-time 180 "https://www.tsetmc.com/main.f24603b0cc21e2598771.js" -o main.js
+          set -eu
+          URL="https://www.tsetmc.com/main.f24603b0cc21e2598771.js"
+          TOTAL=5636885
+          CHUNK=350000
+          : > main.js
+          START=0
+          while [ "$START" -lt "$TOTAL" ]; do
+            END=$((START + CHUNK - 1))
+            if [ "$END" -ge "$TOTAL" ]; then END=$((TOTAL - 1)); fi
+            echo "Fetching bytes $START-$END"
+            curl -fLsS --connect-timeout 15 --max-time 45 -A "Mozilla/5.0" -H "Range: bytes=$START-$END" "$URL" -o chunk.bin
+            ACTUAL=$(wc -c < chunk.bin)
+            EXPECTED=$((END - START + 1))
+            if [ "$ACTUAL" -ne "$EXPECTED" ]; then
+              echo "Unexpected chunk size: expected=$EXPECTED actual=$ACTUAL"
+              exit 2
+            fi
+            cat chunk.bin >> main.js
+            START=$((END + 1))
+          done
           echo "JS_SIZE=$(wc -c < main.js)"
+          test "$(wc -c < main.js)" -eq "$TOTAL"
 
       - name: Extract service host resolver
         run: |
