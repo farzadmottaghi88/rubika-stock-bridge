@@ -1,6 +1,8 @@
 name: TSETMC live snapshot
 
 on:
+  push:
+    branches: [market-data]
   workflow_dispatch:
   schedule:
     - cron: "*/5 * * * 6-3"
